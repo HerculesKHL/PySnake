@@ -4,6 +4,9 @@ import pygame.key as pk
 from pygame.locals import *
 from pygame import Color, Rect, Surface
 
+from src.snake import Snake
+from src.collectible import Collectible
+
 SceneStates = Enum("SceneStates","INTRO LEVEL PAUSED OVER")
 
 class Scene():
@@ -52,10 +55,11 @@ class Scene():
         self.snake_alive = True
         self.command_queue = []
 
+        #Snake setup
+        self.snake_ = Snake(self.cell_size, self.cell_amt, False)
+        
         #Collectible setup
-        self.collectible = (random.randrange(0,self.cell_amt),
-                            random.randrange(0,self.cell_amt))
-        self.reposition_collectible()
+        self.collectible = Collectible(self.cell_size, self.cell_amt)
 
         #UI area setup
             #data
@@ -108,8 +112,8 @@ class Scene():
         grow = keys[K_SPACE]
         pause = keys[K_RETURN]
 
-        if grow and self.snake_growth == False:
-            self.snake_growth = True
+##        if grow and self.snake_growth == False:
+##            self.snake_growth = True
 
         #MAY REQUIRE SOME REFINEMENT
         #uses the same ordering as the snake's directions
@@ -122,6 +126,12 @@ class Scene():
         self.timer_surf = self.font.render(str(self.timer//1000), True, self.text_colour, self.ui_colour)
         self.timer_rect = self.timer_surf.get_rect()
         self.timer_rect.center = self.tpos
+
+        #snake update
+        self.snake_.update(delta)
+
+        #Collectible update
+        self.collectible.update(delta)
 
     def render(self, target):
         target.blit(self.play_surf, self.play_rect)
@@ -137,10 +147,6 @@ class Scene():
                     Rect((bodypart[0]*self.snake_cell_size[0],
                           bodypart[1]*self.snake_cell_size[1]),
                          self.snake_cell_size))
-            pd.circle(self.snake_surf, Color(255, 0, 50),
-                      (int((self.collectible[0]+0.5)*self.cell_size[0]),
-                       int((self.collectible[1]+0.5)*self.cell_size[1])),
-                      self.cell_size[0]>>1)
         target.blit(self.snake_surf, self.play_rect)
         #check whether this is the best approach
         self.ui_surf.fill(self.ui_colour)
@@ -149,6 +155,12 @@ class Scene():
         self.ui_surf.blit(self.score_tsurf, self.score_trect)
         self.ui_surf.blit(self.score_surf, self.score_rect)
         target.blit(self.ui_surf, self.ui_rect)
+
+        #snake draw
+        self.snake_.render(target)
+        
+        #collectible draw
+        self.collectible.render(target)
 
     def update_snake(self, delta):
         self.snake_cur_time -= delta
@@ -163,9 +175,6 @@ class Scene():
             self.snake_has_changed = True
             self.snake_max_time -= self.snake_speed_rate
             #print(self.snake_max_time)
-
-        if self.snake_cur_time < 0:
-            self.snake_cur_time = 0
 
     def move_snake(self):
         temp_growth = None
@@ -201,14 +210,17 @@ class Scene():
                         self.command_queue.append(self.snake_directions[3])
 
     def check_snake(self):
-        if tuple(self.snake[0]) in self.snake[1::]:
-            return False
-        return True
+        return tuple(self.snake[0]) not in self.snake[1::]
+##        if tuple(self.snake[0]) in self.snake[1::]:
+##            return False
+##        return True
 
     def collect(self):
-        if self.collectible == tuple(self.snake[0]):
+        if self.collectible.get_current_cell() == tuple(self.snake[0]):
             self.snake_growth = True
-            self.reposition_collectible()
+            while self.collectible.get_current_cell() == tuple(self.snake[0]) or\
+                  self.collectible.get_current_cell() in self.snake:
+                self.collectible.reposition()
 
             self.score += 1
             self.score_surf = self.font.render(str(self.score), True, self.text_colour, self.ui_colour)
@@ -220,8 +232,3 @@ class Scene():
             if self.score > 0 and self.score%5 == 0:
                 self.snake_speed_change = True
 
-    def reposition_collectible(self):
-        while self.collectible in self.snake[1::] or\
-              self.collectible == tuple(self.snake[0]):
-            self.collectible = (random.randrange(0,self.cell_amt),
-                                random.randrange(0,self.cell_amt))

@@ -36,27 +36,8 @@ class Scene():
                                      Rect((x*self.cell_size[0], y*self.cell_size[1]),
                                           self.cell_size))
 
-        #Snake
-        self.snake_surf = Surface(self.play_rect.size, pygame.SRCALPHA)
-        self.snake = [[9,9],(9,8)]
-        self.snake_cell_size = tuple(self.cell_size)
-        self.snake_head = Color(255, 0, 0)
-        self.snake_body = Color(0, 255,0)
-        self.snake_position = (0,0)
-        self.snake_max_time = 500 #ms
-        self.snake_cur_time = 500
-        self.snake_speed_change = False
-        self.snake_has_changed = False
-        self.snake_speed_rate = 50
-            #CLOCKWISE FROM NORTH
-        self.snake_directions = ((0,-1),(1,0),(0,1),(-1,0))
-        self.snake_cur_direction = (1,0)
-        self.snake_growth = False
-        self.snake_alive = True
-        self.command_queue = []
-
         #Snake setup
-        self.snake_ = Snake(self.cell_size, self.cell_amt, False)
+        self.snake = Snake(self.cell_size, self.cell_amt, False)
         
         #Collectible setup
         self.collectible = Collectible(self.cell_size, self.cell_amt)
@@ -101,26 +82,14 @@ class Scene():
         return True
     
     def update(self, delta):
-        if not self.snake_alive:
+        if not self.snake.check_alive():
             return
-        #KEY PRESSES
-        keys = pk.get_pressed()
-        north = keys[K_w] or keys[K_UP]
-        south = keys[K_s] or keys[K_DOWN]
-        east = keys[K_d] or keys[K_RIGHT]
-        west = keys[K_a] or keys[K_LEFT]
-        grow = keys[K_SPACE]
-        pause = keys[K_RETURN]
 
-##        if grow and self.snake_growth == False:
-##            self.snake_growth = True
+##        if grow and self.snakegrowth == False:
+##            self.snakegrowth = True
 
         #MAY REQUIRE SOME REFINEMENT
-        #uses the same ordering as the snake's directions
-        self.turn_snake((north, east, south, west))
-        self.update_snake(delta)
-
-        self.collect()
+        #self.collect()
 
         self.timer += delta
         self.timer_surf = self.font.render(str(self.timer//1000), True, self.text_colour, self.ui_colour)
@@ -128,26 +97,13 @@ class Scene():
         self.timer_rect.center = self.tpos
 
         #snake update
-        self.snake_.update(delta)
+        self.snake.update(delta)
 
         #Collectible update
         self.collectible.update(delta)
 
     def render(self, target):
         target.blit(self.play_surf, self.play_rect)
-        self.snake_surf.fill((0, 0, 0, 0))
-        for bodypart in self.snake:
-            fill = self.snake_body
-            if self.snake.index(bodypart) == 0:
-                fill = self.snake_head
-            if not self.snake_alive:
-                fill = Color(0, 0, 0)
-            import pygame.draw as pd
-            pd.rect(self.snake_surf, fill,
-                    Rect((bodypart[0]*self.snake_cell_size[0],
-                          bodypart[1]*self.snake_cell_size[1]),
-                         self.snake_cell_size))
-        target.blit(self.snake_surf, self.play_rect)
         #check whether this is the best approach
         self.ui_surf.fill(self.ui_colour)
         self.ui_surf.blit(self.timer_tsurf, self.timer_trect)
@@ -157,63 +113,10 @@ class Scene():
         target.blit(self.ui_surf, self.ui_rect)
 
         #snake draw
-        self.snake_.render(target)
+        self.snake.render(target)
         
         #collectible draw
         self.collectible.render(target)
-
-    def update_snake(self, delta):
-        self.snake_cur_time -= delta
-        if self.snake_cur_time <= 0:
-            self.snake_cur_time += self.snake_max_time
-            self.move_snake()
-            self.snake_alive = self.check_snake()
-
-        #REFACTOR
-        if self.snake_speed_change and not self.snake_has_changed:
-            self.snake_speed_change = False
-            self.snake_has_changed = True
-            self.snake_max_time -= self.snake_speed_rate
-            #print(self.snake_max_time)
-
-    def move_snake(self):
-        temp_growth = None
-        if self.snake_growth:
-            self.snake_growth = False
-            temp_growth = self.snake[-1]
-        for i in range(len(self.snake)-1, 0, -1):
-            self.snake[i] = tuple(self.snake[i-1])
-        if temp_growth is not None:
-            self.snake.append(temp_growth)
-        if len(self.command_queue) > 0:
-            self.snake_cur_direction = self.command_queue.pop(0)
-        self.snake[0][0] += self.snake_cur_direction[0]
-        self.snake[0][1] += self.snake_cur_direction[1]  
-
-        self.snake[0][0] %= self.cell_amt
-        self.snake[0][1] %= self.cell_amt
-
-    def turn_snake(self, directions):
-        #will have to turn into list of movement pushes...
-        if len(self.command_queue) < 2:
-            if self.snake_cur_direction[0] != 0:
-                if len(self.command_queue) == 0 or self.command_queue[-1][0] != 0:
-                    if directions[0]:
-                        self.command_queue.append(self.snake_directions[0])
-                    elif directions[2]:
-                        self.command_queue.append(self.snake_directions[2])
-            elif self.snake_cur_direction[1] != 0:
-                if len(self.command_queue) == 0 or self.command_queue[-1][1] != 0:
-                    if directions[1]:
-                        self.command_queue.append(self.snake_directions[1])
-                    elif directions[3]:
-                        self.command_queue.append(self.snake_directions[3])
-
-    def check_snake(self):
-        return tuple(self.snake[0]) not in self.snake[1::]
-##        if tuple(self.snake[0]) in self.snake[1::]:
-##            return False
-##        return True
 
     def collect(self):
         if self.collectible.get_current_cell() == tuple(self.snake[0]):
@@ -231,4 +134,3 @@ class Scene():
                 self.snake_has_changed = False
             if self.score > 0 and self.score%5 == 0:
                 self.snake_speed_change = True
-

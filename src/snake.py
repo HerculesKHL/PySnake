@@ -22,6 +22,8 @@ class Snake():
         self.head_surf.fill((255, 0, 0))
         self.body_surf = Surface(size)
         self.body_surf.fill((0,255,0))
+        self.dead_surf = Surface(size)
+        self.dead_surf.fill((50, 50, 50))
         
         #Positions setup
         self.coords = []
@@ -68,7 +70,23 @@ class Snake():
                                          coord[1]*self.part_size[1]))
 
     def turn(self, directions):
-        pass
+        if len(self.command_queue) < 2: #if there are enough input slots available
+            if self.cur_direction[0] != 0: #if it's currently moving horizontally
+                #if there are no inputs queued or if the last input is queued for a horizontal movement
+                #This basically makes it impossible for the user to try and "backtrack"
+                if len(self.command_queue) == 0 or self.command_queue[-1][0] != 0:
+                    if directions[0]: #if vertical input NORTH
+                        self.command_queue.append(Directions.NORTH.value)
+                    elif directions[2]:
+                        self.command_queue.append(Directions.SOUTH.value)
+            elif self.cur_direction[1] != 0: #if it's currently moving vertically
+                #if there are no inputs queued or if the last input is queued for a vertical movement
+                #This basically makes it impossible for the user to try and "backtrack"
+                if len(self.command_queue) == 0 or self.command_queue[-1][1] !=0:
+                    if directions[1]:
+                        self.command_queue.append(Directions.EAST.value)
+                    elif directions[3]:
+                        self.command_queue.append(Directions.WEST.value)
 
     def shift(self, delta):
         self.cur_time -= delta
